@@ -1,0 +1,8 @@
+# CHANGELOG
+
+### Assignment 2
+
+## 2024-04-22 3:00 pm
+
+- Initializing project with Makefile, CHANGELOG, README, game.cpp, game.h
+- Implementing user control of spaceship

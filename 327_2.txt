@@ -1,0 +1,29 @@
+Terminal based game:
+-ncurses
+-obstacles flying from top to bottom or right to left
+-have to avoid and survive for as long as possible
+-pilot ship anywhere in terminal space provided (up, down,   left, right using w, a, s, d)
+-point ship in any direction (using left/right arrow)
+-fire blasts to destroy obstacles (space to begin game/shoot)
+-score based on time survived and obstacles destroyed
+-espcape key to pause
+
+Game Logic
+    handle user input, update game state, draw game screen, check for collisions
+
+Draw Game screen
+    use ncurses to draw game screen
+    draw player's ship, obstacles, other elements
+
+Handle User input
+    use ncurses to handle user input, listen for key presses
+
+Game Loop
+    update game state and redraw screen at regular intervals
+
+Collision Detection
+    between ship and obstacles
+
+Scoring
+    keep track of player's score based on time and obstacles destroyed
+
