@@ -7,12 +7,70 @@
 #define HEIGHT 24
 #define WIDTH 80
 
-void gameLoop()
+// Define structure for the ship
+struct Ship
 {
-    // Initial ship position
-    int ship_y = HEIGHT / 2;
-    int ship_x = WIDTH / 2;
+    int y;                // Y-coord
+    int x;                // X-coord
+    int direction;        // Direction ship is facing (0: up, 1: right, 2: down, 3: left)
+    char shapes[4][3][3]; // Represent shape of ship
+    int shield;
+    int health;
+    int ammo;
+};
 
+Ship initShip(int y, int x)
+{
+    Ship ship;
+    ship.y = y;
+    ship.x = x;
+    ship.direction = 0; // Start facing up
+    ship.shield = 50;   // Start with 50% shield
+    ship.health = 100;
+    ship.ammo = 100;
+
+    char upShape[3][3] = {
+        {' ', 'X', ' '},
+        {' ', 'X', ' '},
+        {'X', 'X', 'X'}};
+
+    char rightShape[3][3] = {
+        {'X', ' ', ' '},
+        {'X', 'X', 'X'},
+        {'X', ' ', ' '}};
+
+    char downShape[3][3] = {
+        {'X', 'X', 'X'},
+        {' ', 'X', ' '},
+        {' ', 'X', ' '}};
+
+    char leftShape[3][3] = {
+        {' ', ' ', 'X'},
+        {'X', 'X', 'X'},
+        {' ', ' ', 'X'}};
+
+    std::copy(&upShape[0][0], &upShape[0][0] + 9, &ship.shapes[0][0][0]);
+    std::copy(&rightShape[0][0], &rightShape[0][0] + 9, &ship.shapes[1][0][0]);
+    std::copy(&downShape[0][0], &downShape[0][0] + 9, &ship.shapes[2][0][0]);
+    std::copy(&leftShape[0][0], &leftShape[0][0] + 9, &ship.shapes[3][0][0]);
+
+    return ship;
+}
+
+void drawShip(const Ship &ship)
+{
+    // Draw ship at current postion based on direction
+    for (int i = -1; i < 2; i++)
+    {
+        for (int j = -1; j < 2; j++)
+        {
+            mvprintw(ship.y + i, ship.x + j, "%c", ship.shapes[ship.direction][i + 1][j + 1]);
+        }
+    }
+}
+
+void gameLoop(Ship &ship)
+{
     // Main loop
     int ch;
     // Press 'q' to quit
@@ -25,21 +83,32 @@ void gameLoop()
         switch (ch)
         {
         case 'w':
-            ship_y = std::max(ship_y - 1, 0);
+            ship.y = std::max(ship.y - 1, 0);
             break;
         case 's':
-            ship_y = std::min(ship_y + 1, HEIGHT - 1);
+            ship.y = std::min(ship.y + 1, HEIGHT - 1);
             break;
         case 'a':
-            ship_x = std::max(ship_x - 1, 0);
+            ship.x = std::max(ship.x - 1, 0);
             break;
         case 'd':
-            ship_x = std::min(ship_x + 1, WIDTH - 1);
+            ship.x = std::min(ship.x + 1, WIDTH - 1);
+            break;
+        case KEY_UP:
+            ship.direction = 0; // Up
+            break;
+        case KEY_RIGHT:
+            ship.direction = 1; // Right
+            break;
+        case KEY_DOWN:
+            ship.direction = 2; // Down
+            break;
+        case KEY_LEFT:
+            ship.direction = 3; // Left
             break;
         }
 
-        // Draw ship
-        mvprintw(ship_y, ship_x, "A");
+        drawShip(ship);
 
         refresh();
     }
@@ -47,6 +116,8 @@ void gameLoop()
 
 int main()
 {
+
+    Ship ship = initShip(HEIGHT / 2, WIDTH / 2);
     // Initialize ncurses
     initscr();
     cbreak();
@@ -54,7 +125,9 @@ int main()
     keypad(stdscr, TRUE);
     curs_set(0); // Hide cursor
 
-    gameLoop();
+    drawShip(ship);
+
+    gameLoop(ship);
 
     // End ncurses
     endwin();

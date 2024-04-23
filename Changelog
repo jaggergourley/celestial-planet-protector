@@ -6,3 +6,7 @@
 
 - Initializing project with Makefile, CHANGELOG, README, game.cpp, game.h
 - Implementing user control of spaceship
+
+## 2024-04-23 12:00 pm
+
+- Working on ship visualization
