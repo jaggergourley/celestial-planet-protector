@@ -10,3 +10,8 @@
 ## 2024-04-23 12:00 pm
 
 - Working on ship visualization
+
+## 2024-04-23 3:00 pm
+
+- Printing ship information such as health, shield, ammo, score
+- Beginning on ships ability to shoot ammo

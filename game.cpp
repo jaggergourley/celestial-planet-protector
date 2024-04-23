@@ -1,11 +1,21 @@
+#include <cstdlib>
 #include <iostream>
 #include <algorithm>
+#include <string>
 #include <ncurses.h>
 
 #include "game.h"
 
 #define HEIGHT 24
 #define WIDTH 80
+
+enum ColorPairs
+{
+    COLOR_PAIR_DEFAULT,
+    COLOR_PAIR_RED,
+    COLOR_PAIR_GREEN,
+    COLOR_PAIR_YELLOW
+};
 
 // Define structure for the ship
 struct Ship
@@ -17,6 +27,14 @@ struct Ship
     int shield;
     int health;
     int ammo;
+    int score;
+};
+
+struct Ammo
+{
+    int y;
+    int x;
+    int direction; // Direction of shot (0: up, 1: right, 2: down, 3: left)
 };
 
 Ship initShip(int y, int x)
@@ -28,6 +46,7 @@ Ship initShip(int y, int x)
     ship.shield = 50;   // Start with 50% shield
     ship.health = 100;
     ship.ammo = 100;
+    ship.score = 0;
 
     char upShape[3][3] = {
         {' ', 'X', ' '},
@@ -57,6 +76,22 @@ Ship initShip(int y, int x)
     return ship;
 }
 
+Ammo *createShot(const Ship &ship)
+{
+    // Allocate memory for shot
+    Ammo *shot = new Ammo;
+
+    // Calc initial position and direction based on ship's info
+
+    return shot;
+}
+
+void destroyShot(Ammo *shot)
+{
+    // Free memory for shot
+    delete shot;
+}
+
 void drawShip(const Ship &ship)
 {
     // Draw ship at current postion based on direction
@@ -66,6 +101,35 @@ void drawShip(const Ship &ship)
         {
             mvprintw(ship.y + i, ship.x + j, "%c", ship.shapes[ship.direction][i + 1][j + 1]);
         }
+    }
+}
+
+void drawStatusBars(const Ship &ship)
+{
+    // Define width of each bar
+    int barWidth = 12;
+
+    attron(COLOR_PAIR(COLOR_PAIR_GREEN));
+    mvprintw(0, 1, "HP: [%-*s]", barWidth, std::string((ship.health * barWidth) / 100, '=').c_str());
+    attroff(COLOR_PAIR(COLOR_PAIR_GREEN));
+
+    attron(COLOR_PAIR(COLOR_PAIR_YELLOW));
+    mvprintw(0, 21, "Shield: [%-*s]", barWidth, std::string((ship.shield * barWidth) / 100, '=').c_str());
+    attroff(COLOR_PAIR(COLOR_PAIR_YELLOW));
+
+    attron(COLOR_PAIR(COLOR_PAIR_RED));
+    mvprintw(0, 45, "Ammo: [%-*s]", barWidth, std::string((ship.ammo * barWidth) / 100, '=').c_str());
+    attroff(COLOR_PAIR(COLOR_PAIR_RED));
+
+    mvprintw(0, 67, "Score: %d", ship.score);
+}
+
+void shoot(Ship &ship)
+{
+    // Check if ship has enough ammo
+    if (ship.ammo > 0)
+    {
+        ship.ammo--;
     }
 }
 
@@ -83,16 +147,16 @@ void gameLoop(Ship &ship)
         switch (ch)
         {
         case 'w':
-            ship.y = std::max(ship.y - 1, 0);
+            ship.y = std::max(ship.y - 1, 2);
             break;
         case 's':
-            ship.y = std::min(ship.y + 1, HEIGHT - 1);
+            ship.y = std::min(ship.y + 1, HEIGHT - 2);
             break;
         case 'a':
-            ship.x = std::max(ship.x - 1, 0);
+            ship.x = std::max(ship.x - 1, 1);
             break;
         case 'd':
-            ship.x = std::min(ship.x + 1, WIDTH - 1);
+            ship.x = std::min(ship.x + 1, WIDTH - 2);
             break;
         case KEY_UP:
             ship.direction = 0; // Up
@@ -106,24 +170,42 @@ void gameLoop(Ship &ship)
         case KEY_LEFT:
             ship.direction = 3; // Left
             break;
+        case ' ' || 32:
+            shoot(ship);
+            break;
         }
 
         drawShip(ship);
+        drawStatusBars(ship);
 
         refresh();
     }
+}
+
+void initNcurses()
+{
+    // Initialize ncurses
+    initscr();
+    start_color();
+    init_pair(COLOR_PAIR_RED, COLOR_RED, COLOR_BLACK);
+    init_pair(COLOR_PAIR_GREEN, COLOR_GREEN, COLOR_BLACK);
+    init_pair(COLOR_PAIR_YELLOW, COLOR_YELLOW, COLOR_BLACK);
+    cbreak();
+    noecho();
+    keypad(stdscr, TRUE);
+    curs_set(0); // Hide cursor
 }
 
 int main()
 {
 
     Ship ship = initShip(HEIGHT / 2, WIDTH / 2);
-    // Initialize ncurses
-    initscr();
-    cbreak();
-    noecho();
-    keypad(stdscr, TRUE);
-    curs_set(0); // Hide cursor
+
+    initNcurses();
+
+    // Define color pairs and set default color
+    init_pair(COLOR_PAIR_DEFAULT, COLOR_WHITE, COLOR_BLACK);
+    attron(COLOR_PAIR(COLOR_PAIR_DEFAULT));
 
     drawShip(ship);
 
