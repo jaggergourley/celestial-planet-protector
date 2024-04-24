@@ -1,16 +1,19 @@
-# Compiler
 CC = g++
 
-# Compiler Flags
-CFLAGS = -std=c++11 -Wall
-
-# Executable
-EXEC = game
+CFLAGS = -Wall -Wextra -pedantic -std=c++11 
+LDFLAGS = -lncurses
+TARGET = game
+SRC = game.cpp
+OBJ = $(SRC:.cpp=.o)
 
 # Main Target
-$(EXEC): game.cpp
-	$(CC) $(CFLAGS) game.cpp -o $(EXEC) -lncurses
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+%.o: %.cpp
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Clean Target
+.PHONY: clean
 clean:
-	rm -f $(EXEC)
+	rm -f $(OBJ) $(TARGET)

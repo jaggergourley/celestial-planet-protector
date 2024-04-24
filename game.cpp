@@ -2,12 +2,15 @@
 #include <iostream>
 #include <algorithm>
 #include <string>
+#include <vector>
 #include <ncurses.h>
 
 #include "game.h"
 
 #define HEIGHT 24
 #define WIDTH 80
+
+std::vector<Ammo *> shots;
 
 enum ColorPairs
 {
@@ -17,91 +20,82 @@ enum ColorPairs
     COLOR_PAIR_YELLOW
 };
 
-// Define structure for the ship
-struct Ship
-{
-    int y;                // Y-coord
-    int x;                // X-coord
-    int direction;        // Direction ship is facing (0: up, 1: right, 2: down, 3: left)
-    char shapes[4][3][3]; // Represent shape of ship
-    int shield;
-    int health;
-    int ammo;
-    int score;
-};
-
-struct Ammo
-{
-    int y;
-    int x;
-    int direction; // Direction of shot (0: up, 1: right, 2: down, 3: left)
-};
-
-Ship initShip(int y, int x)
+Ship initShip()
 {
     Ship ship;
-    ship.y = y;
-    ship.x = x;
-    ship.direction = 0; // Start facing up
-    ship.shield = 50;   // Start with 50% shield
+    ship.y = HEIGHT / 2;
+    ship.x = WIDTH / 2;
+    ship.direction = 0;
+    ship.shield = 50; // Start with 50% shield
     ship.health = 100;
     ship.ammo = 100;
     ship.score = 0;
 
-    char upShape[3][3] = {
-        {' ', 'X', ' '},
-        {' ', 'X', ' '},
-        {'X', 'X', 'X'}};
-
-    char rightShape[3][3] = {
-        {'X', ' ', ' '},
-        {'X', 'X', 'X'},
-        {'X', ' ', ' '}};
-
-    char downShape[3][3] = {
-        {'X', 'X', 'X'},
-        {' ', 'X', ' '},
-        {' ', 'X', ' '}};
-
-    char leftShape[3][3] = {
-        {' ', ' ', 'X'},
-        {'X', 'X', 'X'},
-        {' ', ' ', 'X'}};
-
-    std::copy(&upShape[0][0], &upShape[0][0] + 9, &ship.shapes[0][0][0]);
-    std::copy(&rightShape[0][0], &rightShape[0][0] + 9, &ship.shapes[1][0][0]);
-    std::copy(&downShape[0][0], &downShape[0][0] + 9, &ship.shapes[2][0][0]);
-    std::copy(&leftShape[0][0], &leftShape[0][0] + 9, &ship.shapes[3][0][0]);
-
     return ship;
 }
 
-Ammo *createShot(const Ship &ship)
+void createShot(const Ship &ship)
 {
     // Allocate memory for shot
-    Ammo *shot = new Ammo;
-
-    // Calc initial position and direction based on ship's info
-
-    return shot;
+    Ammo *newShot = new Ammo{ship.x, ship.y, ship.direction};
+    // Add shot to vector
+    shots.push_back(newShot);
 }
 
-void destroyShot(Ammo *shot)
+void updateShot(Ammo *shot)
 {
-    // Free memory for shot
-    delete shot;
+    // Move shot based on direction
+    switch (shot->direction)
+    {
+    case 0:
+        shot->y--;
+        break;
+    case 1:
+        shot->x++;
+        break;
+    case 2:
+        shot->y++;
+        break;
+    case 3:
+        shot->x--;
+        break;
+    }
+}
+
+void updateAllShots()
+{
+    for (auto it = shots.begin(); it != shots.end();)
+    {
+        updateShot(*it);
+
+        if (isShotOutOfBounds(*it))
+        {
+            delete *it;
+            it = shots.erase(it);
+        }
+        else
+        {
+            renderShot(*it);
+            ++it;
+        }
+    }
+}
+
+bool isShotOutOfBounds(const Ammo *shot)
+{
+    return (shot->x < 0 || shot->x >= WIDTH - 1 || shot->y < 1 || shot->y >= HEIGHT - 1);
+}
+
+void renderShot(const Ammo *shot)
+{
+    mvprintw(shot->y, shot->x, "*");
 }
 
 void drawShip(const Ship &ship)
 {
-    // Draw ship at current postion based on direction
-    for (int i = -1; i < 2; i++)
-    {
-        for (int j = -1; j < 2; j++)
-        {
-            mvprintw(ship.y + i, ship.x + j, "%c", ship.shapes[ship.direction][i + 1][j + 1]);
-        }
-    }
+    char symbols[4] = {'^', '>', 'v', '<'};
+    // Draw ship at current postion
+    mvprintw(ship.y, ship.x, "%c", symbols[ship.direction]);
 }
 
 void drawStatusBars(const Ship &ship)
@@ -131,6 +125,7 @@ void shoot(Ship &ship)
     {
         ship.ammo--;
     }
+    createShot(ship);
 }
 
 void gameLoop(Ship &ship)
@@ -147,36 +142,33 @@ void gameLoop(Ship &ship)
         switch (ch)
         {
         case 'w':
-            ship.y = std::max(ship.y - 1, 2);
+        case KEY_UP:
+            ship.y = std::max(ship.y - 1, 1);
+            ship.direction = 0;
             break;
         case 's':
-            ship.y = std::min(ship.y + 1, HEIGHT - 2);
+        case KEY_DOWN:
+            ship.y = std::min(ship.y + 1, HEIGHT - 1);
+            ship.direction = 2;
             break;
         case 'a':
-            ship.x = std::max(ship.x - 1, 1);
+        case KEY_LEFT:
+            ship.x = std::max(ship.x - 1, 0);
+            ship.direction = 3;
             break;
         case 'd':
-            ship.x = std::min(ship.x + 1, WIDTH - 2);
-            break;
-        case KEY_UP:
-            ship.direction = 0; // Up
-            break;
         case KEY_RIGHT:
-            ship.direction = 1; // Right
+            ship.x = std::min(ship.x + 1, WIDTH - 1);
+            ship.direction = 1;
             break;
-        case KEY_DOWN:
-            ship.direction = 2; // Down
-            break;
-        case KEY_LEFT:
-            ship.direction = 3; // Left
-            break;
-        case ' ' || 32:
+        case ' ':
             shoot(ship);
             break;
         }
 
-        drawShip(ship);
         drawStatusBars(ship);
+        drawShip(ship);
+        updateAllShots();
 
         refresh();
     }
@@ -190,6 +182,8 @@ void initNcurses()
     init_pair(COLOR_PAIR_RED, COLOR_RED, COLOR_BLACK);
     init_pair(COLOR_PAIR_GREEN, COLOR_GREEN, COLOR_BLACK);
     init_pair(COLOR_PAIR_YELLOW, COLOR_YELLOW, COLOR_BLACK);
+    // init_pair(1, COLOR_WHITE, COLOR_WHITE);
+    // init_pair(2, COLOR_GREEN, COLOR_GREEN);
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
@@ -199,7 +193,7 @@ void initNcurses()
 int main()
 {
 
-    Ship ship = initShip(HEIGHT / 2, WIDTH / 2);
+    Ship ship = initShip();
 
     initNcurses();
 

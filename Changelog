@@ -15,3 +15,8 @@
 
 - Printing ship information such as health, shield, ammo, score
 - Beginning on ships ability to shoot ammo
+
+## 2024-04-24 11:00 am
+
+- Altering how ship looks and works
+- Furthering implementation of shooting from player ship
