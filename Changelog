@@ -20,3 +20,14 @@
 
 - Altering how ship looks and works
 - Furthering implementation of shooting from player ship
+
+## 2024-04-29 12:30 pm
+
+- Successfully rendering shots
+- Changing game state updating from user input to being based on time so have constant change
+- Fixed blocking call of user input for continuous game state updating
+
+## 2024-04-29 1:30 pm
+
+- Starting work on asteroids and collision detection
+- Can generate asteroids, working on scaling of difficulty
