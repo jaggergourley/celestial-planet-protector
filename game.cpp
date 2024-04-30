@@ -12,7 +12,7 @@
 #define HEIGHT 24
 #define WIDTH 80
 
-std::vector<Ammo *> shots;
+std::vector<Ammo> playerShots;
 std::vector<Asteroid> asteroids;
 
 enum ColorPairs
@@ -80,72 +80,53 @@ void drawStatusBars(const Ship &ship)
     mvprintw(0, 67, "Score: %d", ship.score);
 }
 
-void createShot(const Ship &ship)
-{
-    // Allocate memory for shot
-    Ammo *newShot = new Ammo{ship.y, ship.x, ship.direction};
-    // Add shot to vector
-    shots.push_back(newShot);
-}
-
-void updateShot(Ammo *shot)
-{
-    // Move shot based on direction
-    switch (shot->direction)
-    {
-    case 0:
-        shot->y -= 2;
-        break;
-    case 1:
-        shot->x += 2;
-        break;
-    case 2:
-        shot->y += 2;
-        break;
-    case 3:
-        shot->x -= 2;
-        break;
-    }
-}
-
-bool isShotOutOfBounds(const Ammo *shot)
-{
-    return (shot->x < 0 || shot->x >= WIDTH - 1 || shot->y < 1 || shot->y >= HEIGHT - 1);
-}
-
-void shoot(Ship &ship)
+void generatePlayerShot(std::vector<Ammo> &playerShots, Ship &ship)
 {
     // Check if ship has enough ammo
     if (ship.ammo > 0)
     {
         ship.ammo--;
+        Ammo shot;
+        shot.direction = ship.direction;
+        shot.x = ship.x;
+        shot.y = ship.y;
+        playerShots.push_back(shot);
     }
     else
     {
         return;
     }
-    createShot(ship);
 }
 
-void drawShot(const Ammo *shot)
+void updatePlayerShots(std::vector<Ammo> &playerShots)
 {
-    mvprintw(shot->y, shot->x, "*");
-}
-
-void updateAllShots()
-{
-    for (auto it = shots.begin(); it != shots.end();)
+    for (auto it = playerShots.begin(); it != playerShots.end();)
     {
-        updateShot(*it);
-
-        if (isShotOutOfBounds(*it))
+        // Move shot based on direction
+        switch (it->direction)
         {
-            delete *it;
-            it = shots.erase(it);
+        case 0:
+            it->y -= 2;
+            break;
+        case 1:
+            it->x += 2;
+            break;
+        case 2:
+            it->y += 2;
+            break;
+        case 3:
+            it->x -= 2;
+            break;
+        }
+
+        // Erase if the shot is out of bounds
+        if (it->x < 0 || it->x >= WIDTH || it->y < 1 || it->y >= HEIGHT)
+        {
+            it = playerShots.erase(it);
         }
         else
         {
-            drawShot(*it);
+            mvprintw(it->y, it->x, "*");
             ++it;
         }
     }
@@ -194,29 +175,67 @@ void updateAsteroids(std::vector<Asteroid> &asteroids)
         it->x += it->dx;
         it->y += it->dy;
 
-        // Check if out of bounds
+        // Erase if the asteroid is out of bounds
         if (it->x < 0 || it->x >= WIDTH || it->y < 1 || it->y >= HEIGHT)
         {
-            // Remove if it moves off screen
             it = asteroids.erase(it);
         }
         else
         {
+            mvprintw(it->y, it->x, "@");
             ++it;
         }
     }
 }
 
-void drawAsteroids(const std::vector<Asteroid> &asteroids)
+// Collision between ship and asteroids
+void checkShipAsteroidCollision(Ship &ship, std::vector<Asteroid> &asteroids)
 {
-    for (const auto &asteroid : asteroids)
+    for (auto itAsteroid = asteroids.begin(); itAsteroid != asteroids.end();)
     {
-        mvprintw(asteroid.y, asteroid.x, "@");
+        // If collision, check shield/hp and decrement while destroying asteroid
+        if (ship.x == itAsteroid->x && ship.y == itAsteroid->y)
+        {
+            if (ship.shield > 0)
+            {
+                ship.shield = std::max(ship.shield - 25, 0);
+            }
+            else
+            {
+                ship.health -= 25;
+            }
+            itAsteroid = asteroids.erase(itAsteroid);
+        }
+        ++itAsteroid;
+    }
+}
+
+// Collision between playerShots and asteroids
+void checkAmmoAsteroidCollision(std::vector<Ammo> &playerShots, std::vector<Asteroid> &asteroids)
+{
+    for (auto itAmmo = playerShots.begin(); itAmmo != playerShots.end();)
+    {
+        for (auto itAsteroid = asteroids.begin(); itAsteroid != asteroids.end();)
+        {
+            // If collision, destroy both shot and asteroid
+            if (itAmmo->x == itAsteroid->x && itAmmo->y == itAsteroid->y)
+            {
+                itAmmo = playerShots.erase(itAmmo);
+                itAsteroid = asteroids.erase(itAsteroid);
+            }
+            else
+            {
+                ++itAsteroid;
+            }
+        }
+        ++itAmmo;
     }
 }
 
 void gameLoop(Ship &ship)
 {
+
+    int count = 0;
 
     // Set up variables for timing
     auto startTime = std::chrono::steady_clock::now();
@@ -258,7 +277,7 @@ void gameLoop(Ship &ship)
                 ship.direction = 1;
                 break;
             case ' ':
-                shoot(ship);
+                generatePlayerShot(playerShots, ship);
                 break;
             case 'q':
                 return;
@@ -280,10 +299,13 @@ void gameLoop(Ship &ship)
             lastScoreUpdateTime = currentTime;
         }
 
+        // Update game state every 0.1 seconds
         if (gameTimeChange >= gameUpdateInterval)
         {
+            count += 1;
+
             // Generate asteroids more frequently as time goes on
-            int asteroidFrequency = std::max(100 - static_cast<int>(totalElapsedTime.count() / 1000), 1);
+            int asteroidFrequency = std::max(10 - static_cast<int>(totalElapsedTime.count() / 1000), 5);
             if (rand() % asteroidFrequency == 0)
             {
                 generateAsteroid(asteroids);
@@ -295,10 +317,18 @@ void gameLoop(Ship &ship)
             drawStatusBars(ship);
             drawShip(ship);
 
-            updateAllShots();
-
+            updatePlayerShots(playerShots);
             updateAsteroids(asteroids);
-            drawAsteroids(asteroids);
+
+            mvprintw(2, 0, "working after %d iters with %zu asteroids and %zu shots", count, asteroids.size(), playerShots.size());
+
+            checkShipAsteroidCollision(ship, asteroids);
+            checkAmmoAsteroidCollision(playerShots, asteroids);
+
+            if (ship.health <= 0)
+            {
+                return;
+            }
 
             refresh();
 

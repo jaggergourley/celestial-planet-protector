@@ -31,3 +31,9 @@
 
 - Starting work on asteroids and collision detection
 - Can generate asteroids, working on scaling of difficulty
+
+## 2024-04-30 2:30 pm
+
+- Working on collision detection for ship, asteroid, and ammo
+- Refactored shots to use vector
+- Having issues with collision detection (figured out it was lack of incrementing iterator)

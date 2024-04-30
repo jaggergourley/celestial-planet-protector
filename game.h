@@ -32,12 +32,15 @@ void initNcurses();
 void drawShip(const Ship &ship);
 void drawStatusBars(const Ship &ship);
 
-void createShot(const Ship &ship);
-void updateShot(Ammo *shot);
-bool isShotOutOfBounds(const Ammo *shot);
-void shoot(Ship &ship);
-void drawShot(const Ammo *shot);
-void updateAllShots();
+void generatePlayerShot(std::vector<Ammo> &playerShots, Ship &ship);
+void updatePlayerShots(std::vector<Ammo> &playerShots);
+void drawPlayerShots(std::vector<Ammo> &playerShots);
+
+void generateAsteroid(std::vector<Asteroid> &asteroids);
+void updateAsteroids(std::vector<Asteroid> &asteroids);
+void drawAsteroids(const std::vector<Asteroid> &asteroids);
+
+void checkShipAsteroidCollision(Ship &ship, std::vector<Asteroid> &asteroids);
 
 void gameLoop(Ship &ship);
 
