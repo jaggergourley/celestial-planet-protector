@@ -8,12 +8,10 @@
 #include <ncurses.h>
 
 #include "game.h"
+#include "game_state.h"
 
 #define HEIGHT 24
 #define WIDTH 80
-
-std::vector<Ammo> playerShots;
-std::vector<Asteroid> asteroids;
 
 enum ColorPairs
 {
@@ -31,7 +29,7 @@ Ship initShip()
     ship.direction = 0;
     ship.shield = 50; // Start with 50% shield
     ship.health = 100;
-    ship.ammo = 100;
+    ship.ammo = 50;
     ship.score = 0;
 
     return ship;
@@ -132,10 +130,15 @@ void updateGameState(Ship &ship, GameState &gameState)
     gameState.updatePlayerShots();
     gameState.updateAsteroids();
 
-    // mvprintw(2, 0, "working after %d iters with %zu asteroids and %zu shots", count, gameState.asteroids.size(), gameState.playerShots.size());
+    gameState.drawAliens();
+    gameState.generateAlienShot(ship);
+    gameState.updateAlienShots();
 
-    checkShipAsteroidCollision(ship, gameState);
-    checkAmmoAsteroidCollision(gameState);
+    gameState.checkShipAsteroidCollision(ship);
+    gameState.checkPlayerAmmoAsteroidCollision();
+    gameState.checkAlienPlayerAmmoCollision();
+    gameState.checkShipAlienAmmoCollision(ship);
+    gameState.checkAlienAsteroidCollision();
 
     refresh();
 }
@@ -150,7 +153,7 @@ void gameLoop(Ship &ship, GameState &gameState)
     auto startTime = std::chrono::steady_clock::now();
     auto lastGameUpdateTime = startTime;
     auto lastScoreUpdateTime = startTime;
-    const std::chrono::milliseconds gameUpdateInterval(100);   // 100 milliseconds
+    const std::chrono::milliseconds gameUpdateInterval(100);   // 50 milliseconds
     const std::chrono::milliseconds scoreUpdateInterval(1000); // 1 second
 
     // Enable non-blocking input
@@ -179,15 +182,31 @@ void gameLoop(Ship &ship, GameState &gameState)
         // Update game state every 0.1 seconds
         if (gameTimeChange >= gameUpdateInterval)
         {
-            // count += 1;
+
+            count += 1;
             // Generate asteroids more frequently as time goes on
-            int asteroidFrequency = std::max(10 - static_cast<int>(totalElapsedTime.count() / 1000), 5);
+            int asteroidFrequency = std::max(100 - static_cast<int>(totalElapsedTime.count() / 1000), 5);
             if (rand() % asteroidFrequency == 0)
             {
                 gameState.generateAsteroid();
             }
 
+            // Generate aliens more frequently as time goes on
+            int alienFrequency = std::max(100 - static_cast<int>(totalElapsedTime.count() / 1000), 5);
+            if (rand() % alienFrequency == 0)
+            {
+                gameState.generateAlien();
+            }
+
             updateGameState(ship, gameState);
+            if (count % 3 == 0)
+            {
+                gameState.updateAliens(ship);
+            }
+            running = gameState.checkShipAlienCollision(ship);
+
+            mvprintw(3, 0, "working after %d iters", count);
+            gameState.printInfo();
 
             if (ship.health <= 0)
             {

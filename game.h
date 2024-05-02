@@ -3,8 +3,9 @@
 
 #include <vector>
 
-#include "fight.h"
 #include "game_state.h"
+
+class GameState;
 
 struct Ship
 {
@@ -24,6 +25,6 @@ void drawStatusBars(const Ship &ship);
 
 bool handleInput(Ship &ship, GameState &gameState);
 void updateGameState(Ship &ship, GameState &gameState);
-void gameLoop(Ship &ship);
+void gameLoop(Ship &ship, GameState &gameState);
 
 #endif

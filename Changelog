@@ -37,3 +37,21 @@
 - Working on collision detection for ship, asteroid, and ammo
 - Refactored shots to use vector
 - Having issues with collision detection (figured out it was lack of incrementing iterator)
+
+## 2024-05-01 1:00 pm
+
+- Refactored into multiple files
+- Need to fix issue with seg fault from collision detection
+
+## 2024-05-02 12:30 pm
+
+- Changing asteroid movement
+
+## 2024-05-02 2:00 pm
+
+- Implementing alien ships movement and firing of shots
+- Finishing up final collision detections
+
+## 2024-05-02 4:00 pm
+
+- Finishing up visuals and balancing
