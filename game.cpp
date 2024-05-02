@@ -80,162 +80,71 @@ void drawStatusBars(const Ship &ship)
     mvprintw(0, 67, "Score: %d", ship.score);
 }
 
-void generatePlayerShot(std::vector<Ammo> &playerShots, Ship &ship)
+bool handleInput(Ship &ship, GameState &gameState)
 {
-    // Check if ship has enough ammo
-    if (ship.ammo > 0)
-    {
-        ship.ammo--;
-        Ammo shot;
-        shot.direction = ship.direction;
-        shot.x = ship.x;
-        shot.y = ship.y;
-        playerShots.push_back(shot);
-    }
-    else
-    {
-        return;
-    }
-}
 
-void updatePlayerShots(std::vector<Ammo> &playerShots)
-{
-    for (auto it = playerShots.begin(); it != playerShots.end();)
+    int ch = getch();
+
+    // Check for input
+    if (ch != ERR)
     {
-        // Move shot based on direction
-        switch (it->direction)
+        switch (ch)
         {
-        case 0:
-            it->y -= 2;
+        case 'w':
+        case KEY_UP:
+            ship.y = std::max(ship.y - 1, 1);
+            ship.direction = 0;
             break;
-        case 1:
-            it->x += 2;
+        case 's':
+        case KEY_DOWN:
+            ship.y = std::min(ship.y + 1, HEIGHT - 1);
+            ship.direction = 2;
             break;
-        case 2:
-            it->y += 2;
+        case 'a':
+        case KEY_LEFT:
+            ship.x = std::max(ship.x - 1, 0);
+            ship.direction = 3;
             break;
-        case 3:
-            it->x -= 2;
+        case 'd':
+        case KEY_RIGHT:
+            ship.x = std::min(ship.x + 1, WIDTH - 1);
+            ship.direction = 1;
             break;
-        }
-
-        // Erase if the shot is out of bounds
-        if (it->x < 0 || it->x >= WIDTH || it->y < 1 || it->y >= HEIGHT)
-        {
-            it = playerShots.erase(it);
-        }
-        else
-        {
-            mvprintw(it->y, it->x, "*");
-            ++it;
+        case ' ':
+            gameState.generatePlayerShot(ship);
+            break;
+        case 'q':
+            return false; // Quit the game
         }
     }
+    return true; // Continue
 }
 
-void generateAsteroid(std::vector<Asteroid> &asteroids)
+void updateGameState(Ship &ship, GameState &gameState)
 {
-    Asteroid asteroid;
-    int side = rand() % 4; // randomly select side (0: top, 1: right, 2: bottom, 3: left)
 
-    switch (side)
-    {
-    case 0: // Top
-        asteroid.x = rand() % WIDTH;
-        asteroid.y = 1;               // Start above screen
-        asteroid.dx = rand() % 3 - 1; // [-1, 0, 1]
-        asteroid.dy = rand() % 2 + 1; // [1, 2]
-        break;
-    case 1:                     // Right
-        asteroid.x = WIDTH - 1; // Start on right side of screen
-        asteroid.y = rand() % HEIGHT;
-        asteroid.dx = -(rand() % 2 + 1);
-        asteroid.dy = rand() % 3 - 1;
-        break;
-    case 2: // Bottom
-        asteroid.x = rand() % WIDTH;
-        asteroid.y = HEIGHT - 1; // Start below screen
-        asteroid.dx = rand() % 3 - 1;
-        asteroid.dy = -(rand() % 2 + 1);
-        break;
-    case 3:             // Left
-        asteroid.x = 0; // Start on left side of screen
-        asteroid.y = rand() % HEIGHT;
-        asteroid.dx = (rand() % 2 + 1);
-        asteroid.dy = rand() % 3 - 1;
-        break;
-    }
+    clear();
 
-    asteroids.push_back(asteroid);
+    // Update game state
+    drawStatusBars(ship);
+    drawShip(ship);
+
+    gameState.updatePlayerShots();
+    gameState.updateAsteroids();
+
+    // mvprintw(2, 0, "working after %d iters with %zu asteroids and %zu shots", count, gameState.asteroids.size(), gameState.playerShots.size());
+
+    checkShipAsteroidCollision(ship, gameState);
+    checkAmmoAsteroidCollision(gameState);
+
+    refresh();
 }
 
-void updateAsteroids(std::vector<Asteroid> &asteroids)
-{
-    for (auto it = asteroids.begin(); it != asteroids.end();)
-    {
-        it->x += it->dx;
-        it->y += it->dy;
-
-        // Erase if the asteroid is out of bounds
-        if (it->x < 0 || it->x >= WIDTH || it->y < 1 || it->y >= HEIGHT)
-        {
-            it = asteroids.erase(it);
-        }
-        else
-        {
-            mvprintw(it->y, it->x, "@");
-            ++it;
-        }
-    }
-}
-
-// Collision between ship and asteroids
-void checkShipAsteroidCollision(Ship &ship, std::vector<Asteroid> &asteroids)
-{
-    for (auto itAsteroid = asteroids.begin(); itAsteroid != asteroids.end();)
-    {
-        // If collision, check shield/hp and decrement while destroying asteroid
-        if (ship.x == itAsteroid->x && ship.y == itAsteroid->y)
-        {
-            if (ship.shield > 0)
-            {
-                ship.shield = std::max(ship.shield - 25, 0);
-            }
-            else
-            {
-                ship.health -= 25;
-            }
-            itAsteroid = asteroids.erase(itAsteroid);
-        }
-        ++itAsteroid;
-    }
-}
-
-// Collision between playerShots and asteroids
-void checkAmmoAsteroidCollision(std::vector<Ammo> &playerShots, std::vector<Asteroid> &asteroids)
-{
-    for (auto itAmmo = playerShots.begin(); itAmmo != playerShots.end();)
-    {
-        for (auto itAsteroid = asteroids.begin(); itAsteroid != asteroids.end();)
-        {
-            // If collision, destroy both shot and asteroid
-            if (itAmmo->x == itAsteroid->x && itAmmo->y == itAsteroid->y)
-            {
-                itAmmo = playerShots.erase(itAmmo);
-                itAsteroid = asteroids.erase(itAsteroid);
-            }
-            else
-            {
-                ++itAsteroid;
-            }
-        }
-        ++itAmmo;
-    }
-}
-
-void gameLoop(Ship &ship)
+void gameLoop(Ship &ship, GameState &gameState)
 {
 
     int count = 0;
+    bool running = true;
 
     // Set up variables for timing
     auto startTime = std::chrono::steady_clock::now();
@@ -247,42 +156,10 @@ void gameLoop(Ship &ship)
     // Enable non-blocking input
     nodelay(stdscr, TRUE);
 
-    while (true)
+    while (running)
     {
-        int ch = getch();
 
-        // Check for input
-        if (ch != ERR)
-        {
-            switch (ch)
-            {
-            case 'w':
-            case KEY_UP:
-                ship.y = std::max(ship.y - 1, 1);
-                ship.direction = 0;
-                break;
-            case 's':
-            case KEY_DOWN:
-                ship.y = std::min(ship.y + 1, HEIGHT - 1);
-                ship.direction = 2;
-                break;
-            case 'a':
-            case KEY_LEFT:
-                ship.x = std::max(ship.x - 1, 0);
-                ship.direction = 3;
-                break;
-            case 'd':
-            case KEY_RIGHT:
-                ship.x = std::min(ship.x + 1, WIDTH - 1);
-                ship.direction = 1;
-                break;
-            case ' ':
-                generatePlayerShot(playerShots, ship);
-                break;
-            case 'q':
-                return;
-            }
-        }
+        running = handleInput(ship, gameState);
 
         auto currentTime = std::chrono::steady_clock::now();
         // Total time since game started
@@ -302,35 +179,20 @@ void gameLoop(Ship &ship)
         // Update game state every 0.1 seconds
         if (gameTimeChange >= gameUpdateInterval)
         {
-            count += 1;
-
+            // count += 1;
             // Generate asteroids more frequently as time goes on
             int asteroidFrequency = std::max(10 - static_cast<int>(totalElapsedTime.count() / 1000), 5);
             if (rand() % asteroidFrequency == 0)
             {
-                generateAsteroid(asteroids);
+                gameState.generateAsteroid();
             }
 
-            clear();
-
-            // Update game state
-            drawStatusBars(ship);
-            drawShip(ship);
-
-            updatePlayerShots(playerShots);
-            updateAsteroids(asteroids);
-
-            mvprintw(2, 0, "working after %d iters with %zu asteroids and %zu shots", count, asteroids.size(), playerShots.size());
-
-            checkShipAsteroidCollision(ship, asteroids);
-            checkAmmoAsteroidCollision(playerShots, asteroids);
+            updateGameState(ship, gameState);
 
             if (ship.health <= 0)
             {
                 return;
             }
-
-            refresh();
 
             lastGameUpdateTime = currentTime;
         }
@@ -343,7 +205,7 @@ void gameLoop(Ship &ship)
 
 int main()
 {
-
+    GameState gameState;
     Ship ship = initShip();
 
     initNcurses();
@@ -355,7 +217,7 @@ int main()
     drawStatusBars(ship);
     drawShip(ship);
 
-    gameLoop(ship);
+    gameLoop(ship, gameState);
 
     // End ncurses
     endwin();

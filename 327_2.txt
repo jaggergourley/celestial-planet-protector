@@ -27,3 +27,9 @@ Collision Detection
 Scoring
     keep track of player's score based on time and obstacles destroyed
 
+
+--Refactor Vectors for ammo/asteroids into a game class
+--Add points/animations for collisions
+--Add enemy ships
+--Having seg fault
+--Figure out collision when dx, dy is > 1

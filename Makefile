@@ -3,7 +3,7 @@ CC = g++
 CFLAGS = -Wall -Wextra -pedantic -std=c++11 
 LDFLAGS = -lncurses
 TARGET = game
-SRC = game.cpp
+SRC = game.cpp fight.cpp game_state.cpp
 OBJ = $(SRC:.cpp=.o)
 
 # Main Target
