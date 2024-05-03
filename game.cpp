@@ -5,6 +5,7 @@
 #include <vector>
 #include <chrono>
 #include <thread>
+#include <ctime>
 #include <ncurses.h>
 
 #include "game.h"
@@ -12,14 +13,6 @@
 
 #define HEIGHT 24
 #define WIDTH 80
-
-enum ColorPairs
-{
-    COLOR_PAIR_DEFAULT,
-    COLOR_PAIR_RED,
-    COLOR_PAIR_GREEN,
-    COLOR_PAIR_YELLOW
-};
 
 Ship initShip()
 {
@@ -29,10 +22,21 @@ Ship initShip()
     ship.direction = 0;
     ship.shield = 50; // Start with 50% shield
     ship.health = 100;
-    ship.ammo = 50;
+    ship.ammo = 50; // Start with 50% full ammo
     ship.score = 0;
 
     return ship;
+}
+
+void resetShip(Ship &ship)
+{
+    ship.y = HEIGHT / 2;
+    ship.x = WIDTH / 2;
+    ship.direction = 0;
+    ship.shield = 50; // Start with 50% shield
+    ship.health = 100;
+    ship.ammo = 50; // Start with 50% full ammo
+    ship.score = 0;
 }
 
 void initNcurses()
@@ -43,12 +47,53 @@ void initNcurses()
     init_pair(COLOR_PAIR_RED, COLOR_RED, COLOR_BLACK);
     init_pair(COLOR_PAIR_GREEN, COLOR_GREEN, COLOR_BLACK);
     init_pair(COLOR_PAIR_YELLOW, COLOR_YELLOW, COLOR_BLACK);
-    // init_pair(1, COLOR_WHITE, COLOR_WHITE);
-    // init_pair(2, COLOR_GREEN, COLOR_GREEN);
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
     curs_set(0); // Hide cursor
+}
+
+void infoScreen()
+{
+    mvprintw(6, 15, "Get points and survive for as long as you can!\n");
+    mvprintw(7, 15, "Move using arrow keys or WASD\n");
+    mvprintw(8, 15, "Fire shots using SPACE\n");
+    mvprintw(9, 15, "Gather shield (%%) & ammo (+) boosts\n");
+    mvprintw(10, 15, "Every second you survive is worth +1 point\n");
+    mvprintw(11, 15, "Destroying an asteroid (@) is worth +5 points\n");
+    mvprintw(12, 15, "Destroying an alien ship (0) is worth +10 points\n");
+    mvprintw(13, 15, "Don't allow alien ships to reach you\n");
+    mvprintw(14, 15, "Press 'q' to quit\n");
+    mvprintw(15, 15, "Press space to begin!");
+
+    // Wait for user to press space
+    int ch;
+    while ((ch = getch()) != ' ')
+        ;
+}
+
+bool gameOver(Ship &ship)
+{
+    clear();
+    mvprintw(8, 30, "Game Over!");
+    mvprintw(9, 30, "Score: %d", ship.score);
+    mvprintw(10, 30, "Press 'r' to restart");
+    mvprintw(11, 30, "Press 'q' to quit");
+    refresh();
+
+    char ch;
+    while (true)
+    {
+        ch = getch();
+        if (ch == 'r')
+        {
+            return true;
+        }
+        else if (ch == 'q')
+        {
+            return false;
+        }
+    }
 }
 
 void drawShip(const Ship &ship)
@@ -74,6 +119,10 @@ void drawStatusBars(const Ship &ship)
     attron(COLOR_PAIR(COLOR_PAIR_RED));
     mvprintw(0, 45, "Ammo: [%-*s]", barWidth, std::string((ship.ammo * barWidth) / 100, '=').c_str());
     attroff(COLOR_PAIR(COLOR_PAIR_RED));
+
+    mvprintw(0, 1, "HP: ");
+    mvprintw(0, 21, "Shield: ");
+    mvprintw(0, 45, "Ammo: ");
 
     mvprintw(0, 67, "Score: %d", ship.score);
 }
@@ -127,6 +176,11 @@ void updateGameState(Ship &ship, GameState &gameState)
     drawStatusBars(ship);
     drawShip(ship);
 
+    gameState.generateShieldBoost();
+    gameState.generateAmmoBoost();
+    gameState.drawBoosts();
+    gameState.checkShipBoostCollision(ship);
+
     gameState.updatePlayerShots();
     gameState.updateAsteroids();
 
@@ -135,8 +189,8 @@ void updateGameState(Ship &ship, GameState &gameState)
     gameState.updateAlienShots();
 
     gameState.checkShipAsteroidCollision(ship);
-    gameState.checkPlayerAmmoAsteroidCollision();
-    gameState.checkAlienPlayerAmmoCollision();
+    gameState.checkPlayerAmmoAsteroidCollision(ship);
+    gameState.checkAlienPlayerAmmoCollision(ship);
     gameState.checkShipAlienAmmoCollision(ship);
     gameState.checkAlienAsteroidCollision();
 
@@ -185,32 +239,41 @@ void gameLoop(Ship &ship, GameState &gameState)
 
             count += 1;
             // Generate asteroids more frequently as time goes on
-            int asteroidFrequency = std::max(100 - static_cast<int>(totalElapsedTime.count() / 1000), 5);
+
+            int asteroidFrequency = std::max(50 - count / 5, 5);
             if (rand() % asteroidFrequency == 0)
             {
                 gameState.generateAsteroid();
             }
 
-            // Generate aliens more frequently as time goes on
-            int alienFrequency = std::max(100 - static_cast<int>(totalElapsedTime.count() / 1000), 5);
+            // // Generate aliens more frequently as time goes on
+            int alienFrequency = std::max(50 - count / 10, 5);
             if (rand() % alienFrequency == 0)
             {
                 gameState.generateAlien();
             }
 
             updateGameState(ship, gameState);
-            if (count % 3 == 0)
+            // Update aliens once every 4 steps
+            if (count % 4 == 0)
             {
                 gameState.updateAliens(ship);
             }
-            running = gameState.checkShipAlienCollision(ship);
 
-            mvprintw(3, 0, "working after %d iters", count);
-            gameState.printInfo();
-
-            if (ship.health <= 0)
+            if (ship.health <= 0 || !gameState.checkShipAlienCollision(ship))
             {
-                return;
+                bool restart = gameOver(ship);
+                if (!restart)
+                {
+                    return; // Exit game loop
+                }
+                else
+                {
+                    // Reset everything to initial conditions
+                    gameState.reset();
+                    resetShip(ship);
+                    count = 0;
+                }
             }
 
             lastGameUpdateTime = currentTime;
@@ -224,6 +287,8 @@ void gameLoop(Ship &ship, GameState &gameState)
 
 int main()
 {
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
     GameState gameState;
     Ship ship = initShip();
 
@@ -232,6 +297,8 @@ int main()
     // Define color pairs and set default color
     init_pair(COLOR_PAIR_DEFAULT, COLOR_WHITE, COLOR_BLACK);
     attron(COLOR_PAIR(COLOR_PAIR_DEFAULT));
+
+    infoScreen();
 
     drawStatusBars(ship);
     drawShip(ship);

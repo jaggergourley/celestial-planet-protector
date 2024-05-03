@@ -17,9 +17,81 @@ GameState::GameState()
     // Constructor
 }
 
-void GameState::printInfo()
+void GameState::reset()
 {
-    mvprintw(2, 0, "%zu asteroids, %zu shots, and %zu aliens", asteroids.size(), playerShots.size(), aliens.size());
+    playerShots.clear();
+    alienShots.clear();
+    asteroids.clear();
+    aliens.clear();
+    ammoBoosts.clear();
+    shieldBoosts.clear();
+}
+
+void GameState::generateShieldBoost()
+{
+    if (rand() % 500 == 0 && shieldBoosts.size() < 5)
+    {
+        Shield boost;
+        boost.x = rand() % WIDTH;
+        boost.y = rand() % (HEIGHT - 1) + 1;
+        shieldBoosts.push_back(boost);
+    }
+}
+
+void GameState::generateAmmoBoost()
+{
+    if (rand() % 500 == 0 && ammoBoosts.size() < 5)
+    {
+        Ammo boost;
+        boost.x = rand() % WIDTH;
+        boost.y = rand() % (HEIGHT - 1) + 1;
+        ammoBoosts.push_back(boost);
+    }
+}
+
+void GameState::drawBoosts()
+{
+    for (auto it = shieldBoosts.begin(); it != shieldBoosts.end();)
+    {
+        mvprintw(it->y, it->x, "%%");
+        ++it;
+    }
+    for (auto it = ammoBoosts.begin(); it != ammoBoosts.end();)
+    {
+        mvprintw(it->y, it->x, "+");
+
+        ++it;
+    }
+}
+
+void GameState::checkShipBoostCollision(Ship &ship)
+{
+    for (auto it = shieldBoosts.begin(); it != shieldBoosts.end();)
+    {
+        if (ship.x == it->x && ship.y == it->y)
+        {
+            mvprintw(ship.y, ship.x, "%%");
+            ship.shield = std::min(ship.shield + 25, 100);
+            it = shieldBoosts.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    for (auto it = ammoBoosts.begin(); it != ammoBoosts.end();)
+    {
+        if (ship.x == it->x && ship.y == it->y)
+        {
+            mvprintw(ship.y, ship.x, "+");
+            ship.ammo = std::min(ship.ammo + 25, 100);
+            it = ammoBoosts.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }
 
 void GameState::generatePlayerShot(Ship &ship)
@@ -30,8 +102,10 @@ void GameState::generatePlayerShot(Ship &ship)
         ship.ammo--;
         PlayerAmmo shot1;
         PlayerAmmo shot2;
+        PlayerAmmo shot3;
         shot1.direction = ship.direction;
         shot2.direction = ship.direction;
+        shot3.direction = ship.direction;
         shot1.x = ship.x;
         shot1.y = ship.y;
         //(0: up, 1: right, 2: down, 3: left)
@@ -39,25 +113,34 @@ void GameState::generatePlayerShot(Ship &ship)
         {
             shot2.x = ship.x;
             shot2.y = ship.y - 1;
+            shot3.x = ship.x;
+            shot3.y = ship.y - 2;
         }
         else if (ship.direction == 1)
         {
             shot2.x = ship.x + 1;
             shot2.y = ship.y;
+            shot3.x = ship.x + 2;
+            shot3.y = ship.y;
         }
         else if (ship.direction == 2)
         {
             shot2.x = ship.x;
             shot2.y = ship.y + 1;
+            shot3.x = ship.x;
+            shot3.y = ship.y + 2;
         }
         else
         {
             shot2.x = ship.x - 1;
             shot2.y = ship.y;
+            shot3.x = ship.x - 2;
+            shot3.y = ship.y;
         }
 
         playerShots.push_back(shot1);
         playerShots.push_back(shot2);
+        playerShots.push_back(shot3);
     }
     else
     {
@@ -110,13 +193,11 @@ void GameState::generateAsteroid()
         asteroid.x = rand() % WIDTH;
         asteroid.y = 1;               // Start above screen
         asteroid.dx = rand() % 3 - 1; // [-1, 0, 1]
-        // asteroid.dy = rand() % 2 + 1; // [1, 2]
         asteroid.dy = 1;
         break;
     case 1:                     // Right
         asteroid.x = WIDTH - 1; // Start on right side of screen
         asteroid.y = rand() % HEIGHT;
-        // asteroid.dx = -(rand() % 2 + 1);
         asteroid.dx = -1;
         asteroid.dy = rand() % 3 - 1;
         break;
@@ -124,13 +205,11 @@ void GameState::generateAsteroid()
         asteroid.x = rand() % WIDTH;
         asteroid.y = HEIGHT - 1; // Start below screen
         asteroid.dx = rand() % 3 - 1;
-        // asteroid.dy = -(rand() % 2 + 1);
         asteroid.dy = -1;
         break;
     case 3:             // Left
         asteroid.x = 0; // Start on left side of screen
         asteroid.y = rand() % HEIGHT;
-        // asteroid.dx = (rand() % 2 + 1);
         asteroid.dx = 1;
         asteroid.dy = rand() % 3 - 1;
         break;
@@ -161,7 +240,7 @@ void GameState::updateAsteroids()
 
 void GameState::generateAlien()
 {
-    if (aliens.size() < 5)
+    if (aliens.size() < 7)
     {
         Alien alien;
         alien.fireCooldown = 5;
@@ -226,7 +305,6 @@ void GameState::updateAliens(Ship &ship)
         {
             it->x += dx;
             it->y += dy;
-            // mvprintw(it->y, it->x, "O");
             ++it;
         }
         else
@@ -247,7 +325,6 @@ void GameState::updateAliens(Ship &ship)
             {
                 it->y += (rand() % 2 == 0) ? -1 : 1;
             }
-            // mvprintw(it->y, it->x, "O");
             ++it;
         }
     }
@@ -257,7 +334,7 @@ void GameState::drawAliens()
 {
     for (auto it = aliens.begin(); it != aliens.end();)
     {
-        mvprintw(it->y, it->x, "O");
+        mvprintw(it->y, it->x, "0");
         ++it;
     }
 }
@@ -303,8 +380,16 @@ void GameState::updateAlienShots()
     {
         it->x += it->dx;
         it->y += it->dy;
-        mvprintw(it->y, it->x, ".");
-        ++it;
+        // Erase if the shot is out of bounds
+        if (it->x < 0 || it->x >= WIDTH || it->y < 1 || it->y >= HEIGHT)
+        {
+            it = alienShots.erase(it);
+        }
+        else
+        {
+            mvprintw(it->y, it->x, ".");
+            ++it;
+        }
     }
 }
 
@@ -316,6 +401,8 @@ void GameState::checkShipAsteroidCollision(Ship &ship)
         // If collision, check shield/hp and decrement while destroying asteroid
         if (ship.x == itAsteroid->x && ship.y == itAsteroid->y)
         {
+            mvprintw(ship.y, ship.x, " ");
+
             if (ship.shield > 0)
             {
                 ship.shield = std::max(ship.shield - 25, 0);
@@ -325,8 +412,6 @@ void GameState::checkShipAsteroidCollision(Ship &ship)
                 ship.health -= 25;
             }
             itAsteroid = asteroids.erase(itAsteroid);
-            // Exit loop since asteroid is destroyed
-            // break;
         }
         else
         {
@@ -336,7 +421,7 @@ void GameState::checkShipAsteroidCollision(Ship &ship)
 }
 
 // Collision between playerShots and asteroids
-void GameState::checkPlayerAmmoAsteroidCollision()
+void GameState::checkPlayerAmmoAsteroidCollision(Ship &ship)
 {
     for (auto itAmmo = playerShots.begin(); itAmmo != playerShots.end();)
     {
@@ -349,6 +434,7 @@ void GameState::checkPlayerAmmoAsteroidCollision()
                 itAmmo = playerShots.erase(itAmmo);
                 itAsteroid = asteroids.erase(itAsteroid);
                 collision = true;
+                ship.score += 5;
                 break;
             }
             else
@@ -368,6 +454,7 @@ bool GameState::checkShipAlienCollision(Ship &ship)
 {
     for (auto itAlien = aliens.begin(); itAlien != aliens.end();)
     {
+        // If collision return false to indicate end of game
         if (ship.x == itAlien->x && ship.y == itAlien->y)
         {
             return false;
@@ -388,6 +475,7 @@ void GameState::checkShipAlienAmmoCollision(Ship &ship)
         // If collision, check shield/hp and decrement while destroying asteroid
         if (ship.x == itAlienShot->x && ship.y == itAlienShot->y)
         {
+            mvprintw(ship.y, ship.x, " ");
             if (ship.shield > 0)
             {
                 ship.shield = std::max(ship.shield - 25, 0);
@@ -406,7 +494,7 @@ void GameState::checkShipAlienAmmoCollision(Ship &ship)
 }
 
 // Collision between alien ships and player shots
-void GameState::checkAlienPlayerAmmoCollision()
+void GameState::checkAlienPlayerAmmoCollision(Ship &ship)
 {
     for (auto itAmmo = playerShots.begin(); itAmmo != playerShots.end();)
     {
@@ -419,6 +507,7 @@ void GameState::checkAlienPlayerAmmoCollision()
                 itAmmo = playerShots.erase(itAmmo);
                 itAlien = aliens.erase(itAlien);
                 collision = true;
+                ship.score += 10;
                 break;
             }
             else

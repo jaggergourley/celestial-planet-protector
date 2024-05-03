@@ -52,8 +52,12 @@ class GameState
 {
 public:
     GameState();
+    void reset();
 
-    void printInfo();
+    void generateShieldBoost();
+    void generateAmmoBoost();
+    void drawBoosts();
+    void checkShipBoostCollision(Ship &ship);
 
     void generatePlayerShot(Ship &ship);
     void updatePlayerShots();
@@ -68,10 +72,10 @@ public:
     void updateAlienShots();
 
     void checkShipAsteroidCollision(Ship &ship);
-    void checkPlayerAmmoAsteroidCollision();
+    void checkPlayerAmmoAsteroidCollision(Ship &ship);
     bool checkShipAlienCollision(Ship &ship);
     void checkShipAlienAmmoCollision(Ship &ship);
-    void checkAlienPlayerAmmoCollision();
+    void checkAlienPlayerAmmoCollision(Ship &ship);
     void checkAlienAsteroidCollision();
 
 private:
@@ -79,6 +83,8 @@ private:
     std::vector<AlienAmmo> alienShots;
     std::vector<Asteroid> asteroids;
     std::vector<Alien> aliens;
+    std::vector<Ammo> ammoBoosts;
+    std::vector<Shield> shieldBoosts;
 };
 
 #endif

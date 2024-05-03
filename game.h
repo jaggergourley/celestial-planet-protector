@@ -7,11 +7,19 @@
 
 class GameState;
 
+enum ColorPairs
+{
+    COLOR_PAIR_DEFAULT,
+    COLOR_PAIR_RED,
+    COLOR_PAIR_GREEN,
+    COLOR_PAIR_YELLOW
+};
+
 struct Ship
 {
-    int y;         // Y-coord
-    int x;         // X-coord
-    int direction; // Direction of shot (0: up, 1: right, 2: down, 3: left)
+    int y;
+    int x;
+    int direction; // (0: up, 1: right, 2: down, 3: left)
     int shield;
     int health;
     int ammo;
@@ -19,7 +27,11 @@ struct Ship
 };
 
 Ship initShip();
+void resetShip(Ship &ship);
 void initNcurses();
+void infoScreen();
+bool gameOver(Ship &ship);
+
 void drawShip(const Ship &ship);
 void drawStatusBars(const Ship &ship);
 
